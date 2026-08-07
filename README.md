@@ -2,6 +2,10 @@
 
 An interactive HTML/SVG viewer for dependency roadmaps stored in Excel.
 
+## Preview
+
+![Dependency roadmap viewer preview](docs/Screenshot.png)
+
 The project takes a spreadsheet of activities and dependencies, generates `data.json`, and renders the result in `viewer.html` as grouped dependency rows. It is useful for application migrations, decommission plans, delivery roadmaps, and any workflow where activities depend on prior activities.
 
 ## Features

@@ -1,0 +1,427 @@
+{
+  "groups": [
+    {
+      "id": "G0",
+      "label": "Group 0",
+      "order": 0
+    },
+    {
+      "id": "G1",
+      "label": "Group 1",
+      "order": 1
+    },
+    {
+      "id": "G2",
+      "label": "Group 2",
+      "order": 2
+    }
+  ],
+  "nodes": [
+    {
+      "id": "DEP-001",
+      "label": "Inventory application\\ninterfaces",
+      "group": "G0",
+      "details": "Catalog all inbound and outbound interfaces for Application X.",
+      "costToAchieve": 12000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-002",
+      "label": "Map critical business reports",
+      "group": "G0",
+      "details": "Identify reports, dashboards, and downstream consumers that depend on Application X data.",
+      "costToAchieve": 9000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-003",
+      "label": "Assess data quality risks",
+      "group": "G0",
+      "details": "Profile source data and document cleansing issues before migration planning.",
+      "costToAchieve": 15000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-004",
+      "label": "Confirm compliance\\nrequirements",
+      "group": "G0",
+      "details": "Validate retention, audit, privacy, and regulatory requirements for the migration.",
+      "costToAchieve": 8000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-005",
+      "label": "Define target access model",
+      "group": "G0",
+      "details": "Design Application Y roles and permission groups for migrated users.",
+      "costToAchieve": 10000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-006",
+      "label": "Prepare vendor support plan",
+      "group": "G0",
+      "details": "Confirm vendor contacts, escalation paths, and support windows for cutover.",
+      "costToAchieve": 6000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-007",
+      "label": "Baseline current\\noperating costs",
+      "group": "G0",
+      "details": "Capture current licensing, infrastructure, support, and operational spend for Application X.",
+      "costToAchieve": 7000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-008",
+      "label": "Document integration ownership",
+      "group": "G0",
+      "details": "Assign accountable owners for each integration and operational handoff.",
+      "costToAchieve": 5000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-009",
+      "label": "Validate security review scope",
+      "group": "G0",
+      "details": "Confirm security controls, testing scope, and approval checkpoints.",
+      "costToAchieve": 11000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-010",
+      "label": "Create cutover\\ncommunication plan",
+      "group": "G0",
+      "details": "Draft stakeholder messaging, readiness updates, and support communications.",
+      "costToAchieve": 6500.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-011",
+      "label": "Build migration\\nstaging environment",
+      "group": "G1",
+      "details": "Provision staging resources and connectivity for migration testing.",
+      "costToAchieve": 42000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-012",
+      "label": "Configure Application Y roles",
+      "group": "G1",
+      "details": "Implement target roles and groups based on the approved access model.",
+      "costToAchieve": 18000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-013",
+      "label": "Develop data\\ntransformation rules",
+      "group": "G1",
+      "details": "Create repeatable mappings from Application X data structures to Application Y.",
+      "costToAchieve": 26000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-014",
+      "label": "Migrate historical\\ntransaction data",
+      "group": "G1",
+      "details": "Load validated historical records into Application Y staging.",
+      "costToAchieve": 58000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-015",
+      "label": "Connect priority integrations",
+      "group": "G1",
+      "details": "Repoint high-priority integrations and validate message flow.",
+      "costToAchieve": 37000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-016",
+      "label": "Run user acceptance testing",
+      "group": "G1",
+      "details": "Coordinate UAT cycles and resolve issues before production readiness.",
+      "costToAchieve": 22000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-017",
+      "label": "Prepare operational runbooks",
+      "group": "G1",
+      "details": "Write support procedures, recovery steps, and ownership details.",
+      "costToAchieve": 9000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-018",
+      "label": "Execute security\\nvalidation tests",
+      "group": "G1",
+      "details": "Complete control validation and document approvals.",
+      "costToAchieve": 16000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-019",
+      "label": "Train support and power users",
+      "group": "G1",
+      "details": "Train support teams and departmental power users on Application Y workflows.",
+      "costToAchieve": 13000.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-020",
+      "label": "Finalize production\\ncutover checklist",
+      "group": "G1",
+      "details": "Confirm readiness criteria, rollback plan, and go/no-go checklist.",
+      "costToAchieve": 7500.0,
+      "costSavings": 0.0
+    },
+    {
+      "id": "DEP-021",
+      "label": "Switch production\\nusers to Application Y",
+      "group": "G2",
+      "details": "Move users to Application Y and monitor the first production business cycle.",
+      "costToAchieve": 14000.0,
+      "costSavings": 35000.0
+    },
+    {
+      "id": "DEP-022",
+      "label": "Archive Application X records",
+      "group": "G2",
+      "details": "Archive retained records according to compliance and business requirements.",
+      "costToAchieve": 12000.0,
+      "costSavings": 18000.0
+    },
+    {
+      "id": "DEP-023",
+      "label": "Disable legacy write access",
+      "group": "G2",
+      "details": "Lock Application X writes after production cutover to prevent split-brain updates.",
+      "costToAchieve": 4000.0,
+      "costSavings": 12000.0
+    },
+    {
+      "id": "DEP-024",
+      "label": "Retire duplicate\\nreporting feeds",
+      "group": "G2",
+      "details": "Remove old reporting feeds after equivalent Application Y reports are validated.",
+      "costToAchieve": 6000.0,
+      "costSavings": 42000.0
+    },
+    {
+      "id": "DEP-025",
+      "label": "Terminate unused\\nvendor licenses",
+      "group": "G2",
+      "details": "Cancel unused Application X licenses and support subscriptions.",
+      "costToAchieve": 3000.0,
+      "costSavings": 95000.0
+    },
+    {
+      "id": "DEP-026",
+      "label": "Decommission legacy\\nintegration jobs",
+      "group": "G2",
+      "details": "Stop scheduled jobs and remove obsolete integration credentials.",
+      "costToAchieve": 8000.0,
+      "costSavings": 30000.0
+    },
+    {
+      "id": "DEP-027",
+      "label": "Shut down Application\\nX infrastructure",
+      "group": "G2",
+      "details": "Deprovision servers, databases, storage, and monitoring resources.",
+      "costToAchieve": 10000.0,
+      "costSavings": 80000.0
+    },
+    {
+      "id": "DEP-028",
+      "label": "Update disaster\\nrecovery procedures",
+      "group": "G2",
+      "details": "Update continuity plans so recovery procedures reference Application Y.",
+      "costToAchieve": 5000.0,
+      "costSavings": 10000.0
+    },
+    {
+      "id": "DEP-029",
+      "label": "Close audit evidence package",
+      "group": "G2",
+      "details": "Collect approvals, test results, and operational evidence for audit closure.",
+      "costToAchieve": 7000.0,
+      "costSavings": 5000.0
+    },
+    {
+      "id": "DEP-030",
+      "label": "Publish benefits\\nrealization report",
+      "group": "G2",
+      "details": "Summarize final costs, savings, risks retired, and follow-up actions.",
+      "costToAchieve": 4500.0,
+      "costSavings": 25000.0
+    }
+  ],
+  "edges": [
+    {
+      "source": "DEP-001",
+      "target": "DEP-011"
+    },
+    {
+      "source": "DEP-003",
+      "target": "DEP-011"
+    },
+    {
+      "source": "DEP-005",
+      "target": "DEP-012"
+    },
+    {
+      "source": "DEP-009",
+      "target": "DEP-012"
+    },
+    {
+      "source": "DEP-002",
+      "target": "DEP-013"
+    },
+    {
+      "source": "DEP-003",
+      "target": "DEP-013"
+    },
+    {
+      "source": "DEP-001",
+      "target": "DEP-014"
+    },
+    {
+      "source": "DEP-003",
+      "target": "DEP-014"
+    },
+    {
+      "source": "DEP-001",
+      "target": "DEP-015"
+    },
+    {
+      "source": "DEP-008",
+      "target": "DEP-015"
+    },
+    {
+      "source": "DEP-005",
+      "target": "DEP-016"
+    },
+    {
+      "source": "DEP-010",
+      "target": "DEP-016"
+    },
+    {
+      "source": "DEP-006",
+      "target": "DEP-017"
+    },
+    {
+      "source": "DEP-008",
+      "target": "DEP-017"
+    },
+    {
+      "source": "DEP-004",
+      "target": "DEP-018"
+    },
+    {
+      "source": "DEP-009",
+      "target": "DEP-018"
+    },
+    {
+      "source": "DEP-005",
+      "target": "DEP-019"
+    },
+    {
+      "source": "DEP-010",
+      "target": "DEP-019"
+    },
+    {
+      "source": "DEP-006",
+      "target": "DEP-020"
+    },
+    {
+      "source": "DEP-010",
+      "target": "DEP-020"
+    },
+    {
+      "source": "DEP-016",
+      "target": "DEP-021"
+    },
+    {
+      "source": "DEP-019",
+      "target": "DEP-021"
+    },
+    {
+      "source": "DEP-020",
+      "target": "DEP-021"
+    },
+    {
+      "source": "DEP-014",
+      "target": "DEP-022"
+    },
+    {
+      "source": "DEP-018",
+      "target": "DEP-022"
+    },
+    {
+      "source": "DEP-016",
+      "target": "DEP-023"
+    },
+    {
+      "source": "DEP-020",
+      "target": "DEP-023"
+    },
+    {
+      "source": "DEP-013",
+      "target": "DEP-024"
+    },
+    {
+      "source": "DEP-015",
+      "target": "DEP-024"
+    },
+    {
+      "source": "DEP-012",
+      "target": "DEP-025"
+    },
+    {
+      "source": "DEP-020",
+      "target": "DEP-025"
+    },
+    {
+      "source": "DEP-015",
+      "target": "DEP-026"
+    },
+    {
+      "source": "DEP-017",
+      "target": "DEP-026"
+    },
+    {
+      "source": "DEP-011",
+      "target": "DEP-027"
+    },
+    {
+      "source": "DEP-017",
+      "target": "DEP-027"
+    },
+    {
+      "source": "DEP-017",
+      "target": "DEP-028"
+    },
+    {
+      "source": "DEP-020",
+      "target": "DEP-028"
+    },
+    {
+      "source": "DEP-018",
+      "target": "DEP-029"
+    },
+    {
+      "source": "DEP-020",
+      "target": "DEP-029"
+    },
+    {
+      "source": "DEP-013",
+      "target": "DEP-030"
+    },
+    {
+      "source": "DEP-019",
+      "target": "DEP-030"
+    }
+  ]
+}

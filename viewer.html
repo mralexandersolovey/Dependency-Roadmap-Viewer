@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dependency Map (ELK - Rows Per Group)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f7fafc;
+
+      --group-fill: #eef2f7;
+      --group-stroke: #cbd5e1;
+
+      --node-fill: #e1ecf9;
+      --node-stroke: #4f6fa1;
+      --node-text: #1f2937;
+
+      --edge: #5b6b7a;
+      --edge-hi: #2563eb; /* bright blue */
+      --edge-warn: #b91c1c;
+
+      --panel-bg: #ffffff;
+      --panel-border: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    html, body { height: 100%; margin: 0; background: var(--bg); font-family: Segoe UI, Roboto, Arial, sans-serif; overflow: hidden; }
+
+    #toolbar {
+      position: fixed; top: 8px; left: 8px;
+      display: flex; gap: 8px; z-index: 10; flex-wrap: wrap; align-items: center;
+    }
+    #toolbar button { padding: 6px 10px; border: 1px solid #cbd5e1; background:#fff; border-radius:6px; cursor:pointer; }
+    #toolbar button:disabled { opacity: .55; cursor: default; }
+
+    .pill {
+      display: none;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      user-select: none;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      max-width: 75vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Layout: SVG area above, details panel fixed bottom */
+    #stageWrap{
+      position: fixed;
+      left: 0; right: 0;
+      top: 0;
+      bottom: 190px; /* panel height */
+    }
+    #stage { width: 100%; height: 100%; }
+
+    .group-box { fill: var(--group-fill); stroke: var(--group-stroke); stroke-width:1; }
+    .group-text { fill:#374151; font-weight:600; font-size:13px; }
+
+    .node { cursor: pointer; }
+    .node-box { fill: var(--node-fill); stroke: var(--node-stroke); stroke-width:1.5; rx:4; ry:4; }
+    .node-text { fill: var(--node-text); font-size:12px; pointer-events:none; }
+
+    .edge { stroke: var(--edge); stroke-width:1.2; fill:none; marker-end: url(#arrow); opacity: .85; }
+    .edge-hi { stroke: var(--edge-hi) !important; stroke-width:2.2; opacity: 1; }
+    .edge-warn { stroke: var(--edge-warn) !important; stroke-width:2.0; opacity: 1; }
+
+    .node-hi { filter: drop-shadow(0 0 4px rgba(37,99,235,.6)); }
+
+    .hidden { visibility: hidden; pointer-events: none; }
+
+    #hint { position: fixed; right: 10px; bottom: 200px; color:#64748b; font-size:12px; z-index: 9; }
+    #debug { position: fixed; top: 8px; right: 8px; background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; font-size:12px; color:#334155; display:none; z-index:10; max-width: 700px; }
+    #debug .bad { color: #b91c1c; font-weight: 700; }
+    #debug .ok  { color: #065f46; font-weight: 700; }
+
+    /* Highlight nodes in selected subgraph(s) */
+    .node-subgraph .node-box {
+      stroke: var(--edge-hi) !important;
+      stroke-width: 2.2;
+    }
+    .node-subgraph {
+      filter: drop-shadow(0 0 3px rgba(37,99,235,.45));
+    }
+
+    /* Dim nodes not in the selected subgraph(s) */
+    .node-dim {
+      opacity: 0.35;
+      filter: none !important;
+    }
+    .node-dim .node-box { stroke-opacity: 0.55; }
+    .node-dim .node-text { fill: #6b7280; }
+
+    /* Details panel */
+    #detailsPanel{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 190px;
+      background: var(--panel-bg);
+      border-top: 1px solid var(--panel-border);
+      z-index: 8;
+      box-sizing: border-box;
+      padding: 10px 14px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 6px;
+    }
+    #detailsHeader{
+      display:flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    #detailsTitle{
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 14px;
+    }
+    #detailsMeta{
+      color: var(--muted);
+      font-size: 12px;
+      display:flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .kpi{
+      padding: 2px 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      border-radius: 999px;
+      font-weight: 600;
+      color: #334155;
+    }
+    #detailsBody{
+      color:#0f172a;
+      font-size: 12px;
+      overflow: auto;
+      border: 1px solid #eef2f7;
+      background: #fbfdff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      white-space: pre-wrap; /* multiline Details */
+      line-height: 1.35;
+    }
+    #detailsEmpty{
+      color: var(--muted);
+    }
+
+    #stage, #stage * {
+        user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div id="toolbar">
+    <button id="btn-zoom-in">Zoom +</button>
+    <button id="btn-zoom-out">Zoom −</button>
+    <button id="btn-reset">Reset</button>
+    <button id="btn-export">Export SVG</button>
+    <button id="btn-toggle-ids" title="Show node IDs under labels">IDs</button>
+    <button id="btn-toggle-debug" title="Show render stats / edge audit">Debug</button>
+    <button id="btn-toggle-edge-labels" title="Show edge source→target text along edges">Edge labels</button>
+
+    <button id="btn-clear" title="Clear selection (Esc also works)" disabled>Clear</button>
+    <span id="state-pill" class="pill"></span>
+  </div>
+
+  <div id="debug"></div>
+
+  <div id="stageWrap">
+    <svg id="stage"></svg>
+  </div>
+
+  <div id="hint">
+    Wheel = zoom • Drag background = pan • Click = select subgraph (hides non-selected edges) • Ctrl/Cmd+Click = multi-select • Esc/background click = clear
+  </div>
+
+  <div id="detailsPanel">
+    <div id="detailsHeader">
+      <div id="detailsTitle">No selection</div>
+      <div id="detailsMeta"></div>
+    </div>
+    <div id="detailsSub" style="color:var(--muted); font-size:12px;">
+      Tip: Select one node to see Details. For multi-select totals, Ctrl/Cmd+Click multiple nodes.
+    </div>
+    <div id="detailsBody"><span id="detailsEmpty">Select a node to see its Details field here.</span></div>
+  </div>
+
+  <script src="elk.bundled.js"></script>
+
+  <script>
+  (async function main() {
+    const resp = await fetch('data.json');
+    if (!resp.ok) {
+      document.body.innerHTML = "<p style='padding:24px'>data.json not found next to viewer.html</p>";
+      return;
+    }
+    const data = await resp.json();
+
+    // ---------- Tunables ----------
+    const PAD = { top: 28, right: 20, bottom: 16, left: 20 };
+    const SIDE_MARGIN = 20, TOP_MARGIN = 20;
+    const NODE_W = 190, NODE_H = 56;
+    const NODE_GAP = 26;
+    const GROUP_GAP = 36;
+
+    const EDGE_GAP = 14;
+    const OUTER_LANE_PAD = 36;
+
+    // ---------- Flags ----------
+    let SHOW_EDGE_LABELS = (localStorage.getItem('showEdgeLabels') === '1');
+
+    // ---------- Helpers ----------
+    function cssEsc(s){
+      return (window.CSS && CSS.escape) ? CSS.escape(s) : s.replace(/"/g,'\\"');
+    }
+
+    function decodeHtmlEntities(str) {
+      if (str == null) return '';
+      const t = document.createElement('textarea');
+      t.innerHTML = String(str);
+      return t.value;
+    }
+
+    function setMultilineSvgText(textEl, value, x, y, lineHeight = 14) {
+      const label = decodeHtmlEntities(value);
+      const lines = String(label).split(/<br\s*\/?>|\\n|\r?\n/i);
+      lines.forEach((line, i) => {
+        const tspan = document.createElementNS(NS, 'tspan');
+        tspan.setAttribute('x', x);
+        tspan.setAttribute('y', y + (i * lineHeight));
+        tspan.textContent = line;
+        textEl.appendChild(tspan);
+      });
+      return lines.length;
+    }
+
+    function singleLineLabel(value) {
+      return String(decodeHtmlEntities(value))
+        .replace(/<br\s*\/?>|\\n|\r?\n/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function toNumber(v) {
+      if (v == null) return 0;
+      if (typeof v === 'number' && isFinite(v)) return v;
+      const s = String(v).trim();
+      if (!s) return 0;
+      // strip $, commas, spaces; allow parentheses for negatives
+      let neg = false;
+      let x = s;
+      if (x.startsWith('(') && x.endsWith(')')) { neg = true; x = x.slice(1,-1); }
+      x = x.replace(/[$,\\s]/g,'');
+      const n = parseFloat(x);
+      if (!isFinite(n)) return 0;
+      return neg ? -n : n;
+    }
+
+    function formatMoney(n) {
+      const v = (typeof n === 'number') ? n : toNumber(n);
+      const abs = Math.abs(v);
+      const s = abs.toLocaleString(undefined, { maximumFractionDigits: 0 });
+      return (v < 0 ? "-$" : "$") + s;
+    }
+
+    // ---------- Stable maps ----------
+    const nodeMetaById  = new Map((data.nodes  || []).map(n => [String(n.id), n]));
+    const groupMetaById = new Map((data.groups || []).map(g => [String(g.id), g]));
+    const groupOrderById = new Map((data.groups || []).map(g => [String(g.id), (g.order ?? 0)]));
+
+    const nodeToGroup = new Map((data.nodes || []).map(n => [String(n.id), String(n.group)]));
+
+    // ---------- Adjacency ----------
+    const outEdgesBySrc = new Map();
+    const inEdgesByTgt  = new Map();
+    const forward = new Map();
+    const backward = new Map();
+
+    function pushMapArr(map, k, v) {
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(v);
+    }
+
+    (data.edges || []).forEach((e, idx) => {
+      const s = String(e.source), t = String(e.target);
+
+      if (!outEdgesBySrc.has(s)) outEdgesBySrc.set(s, []);
+      if (!inEdgesByTgt.has(t))  inEdgesByTgt.set(t, []);
+      outEdgesBySrc.get(s).push({ idx, s, t });
+      inEdgesByTgt.get(t).push({ idx, s, t });
+
+      pushMapArr(forward, s, t);
+      pushMapArr(backward, t, s);
+    });
+
+    function bfsSet(start, adjMap) {
+      const seen = new Set([start]);
+      const q = [start];
+      while (q.length) {
+        const u = q.shift();
+        const nbrs = adjMap.get(u) || [];
+        for (const v of nbrs) {
+          if (!seen.has(v)) { seen.add(v); q.push(v); }
+        }
+      }
+      return seen;
+    }
+
+    function computeSubgraph(focusId) {
+      const down = bfsSet(focusId, forward);
+      const up   = bfsSet(focusId, backward);
+      const nodes = new Set([...down, ...up, focusId]);
+
+      const edges = new Set();
+      (data.edges || []).forEach(e => {
+        const s = String(e.source), t = String(e.target);
+        if (nodes.has(s) && nodes.has(t)) edges.add(`${s}→${t}`);
+      });
+
+      return { nodes, edges };
+    }
+
+    // ---------- Build ELK graph (ordering only) ----------
+    const elkGraph = {
+      id: 'root',
+      layoutOptions: {
+        'elk.algorithm': 'layered',
+        'elk.direction': 'DOWN',
+        'elk.partitioning.activate': true,
+        'elk.layered.considerModelOrder': 'true',
+        'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+        'elk.spacing.nodeNode': '40',
+        'elk.layered.spacing.nodeNodeBetweenLayers': '90'
+      },
+      children: [],
+      edges: []
+    };
+
+    (data.nodes || []).forEach(n => {
+      const id = String(n.id);
+      const gid = String(n.group);
+      const order = groupOrderById.get(gid) ?? 0;
+
+      elkGraph.children.push({
+        id,
+        width: NODE_W,
+        height: NODE_H,
+        layoutOptions: { 'partitioning.partition': order }
+      });
+    });
+
+    (data.edges || []).forEach(e => {
+      const s = String(e.source), t = String(e.target);
+      elkGraph.edges.push({ id: `${s}->${t}`, sources: [s], targets: [t] });
+    });
+
+    const elk = new ELK();
+    const laid = await elk.layout(elkGraph);
+
+    const elkXById = new Map();
+    (laid.children || []).forEach(n => elkXById.set(String(n.id), (n.x ?? 0)));
+
+    // ---------- Forced layout: one row per group ----------
+    const groupsOrdered = (data.groups || [])
+      .slice()
+      .sort((a,b) => (a.order ?? 0) - (b.order ?? 0))
+      .map(g => String(g.id));
+
+    const nodesByGroup = new Map();
+    groupsOrdered.forEach(gid => nodesByGroup.set(gid, []));
+    (data.nodes || []).forEach(n => {
+      const id = String(n.id);
+      const gid = String(n.group);
+      if (!nodesByGroup.has(gid)) nodesByGroup.set(gid, []);
+      nodesByGroup.get(gid).push(id);
+    });
+
+    nodesByGroup.forEach((arr) => {
+      arr.sort((a,b) => {
+        const ax = elkXById.get(a) ?? 0;
+        const bx = elkXById.get(b) ?? 0;
+        if (ax !== bx) return ax - bx;
+        return a.localeCompare(b);
+      });
+    });
+
+    const groupAbs = new Map();
+    const nodeAbs  = new Map();
+
+    let yCursor = 0;
+    let maxGroupWidth = 0;
+
+    groupsOrdered.forEach(gid => {
+      const ids = nodesByGroup.get(gid) || [];
+      const count = ids.length;
+
+      const gw = PAD.left + PAD.right + (count * NODE_W) + (Math.max(0, count - 1) * NODE_GAP);
+      const gh = PAD.top + PAD.bottom + NODE_H;
+
+      groupAbs.set(gid, { x: 0, y: yCursor, w: gw, h: gh });
+
+      ids.forEach((nid, i) => {
+        const x = PAD.left + i * (NODE_W + NODE_GAP);
+        const y = yCursor + PAD.top;
+        nodeAbs.set(nid, { x, y, w: NODE_W, h: NODE_H, group: gid });
+      });
+
+      maxGroupWidth = Math.max(maxGroupWidth, gw);
+      yCursor += gh + GROUP_GAP;
+    });
+
+    const viewWidth  = maxGroupWidth + SIDE_MARGIN*2 + 220;
+    const viewHeight = yCursor + TOP_MARGIN*2;
+
+    // ---------- SVG setup ----------
+    const svg = document.getElementById('stage');
+    const NS = svg.namespaceURI;
+
+    const defs = document.createElementNS(NS, 'defs');
+    const marker = document.createElementNS(NS, 'marker');
+    marker.setAttribute('id','arrow');
+    marker.setAttribute('markerWidth','10');
+    marker.setAttribute('markerHeight','10');
+    marker.setAttribute('refX','6');
+    marker.setAttribute('refY','3');
+    marker.setAttribute('orient','auto');
+
+    const mpath = document.createElementNS(NS,'path');
+    mpath.setAttribute('d','M0,0 L0,6 L6,3 z');
+    mpath.setAttribute('fill','#5B6B7A');
+    marker.appendChild(mpath);
+    defs.appendChild(marker);
+
+    let scale = 1, tx = SIDE_MARGIN, ty = TOP_MARGIN;
+    let root, groupsLayer, edgesLayer, nodesLayer;
+
+    let dragging = false;
+    let didPan = false;
+    let lx = 0, ly = 0;
+
+    // ---------- Interaction state ----------
+    const selectionSet = new Set();  // selected subgraph roots (plain sets single; ctrl toggles)
+    let detailFocus = null;          // node id shown in details panel when multi-select (set by Shift+Click)
+
+
+    // ---------- Global interaction handlers (register once) ----------
+
+
+    function applyView(){
+      if(root) root.setAttribute('transform', `translate(${tx},${ty}) scale(${scale})`);
+    }
+
+    svg.addEventListener('wheel', e => {
+      e.preventDefault();
+      const k = (e.deltaY < 0) ? 1.1 : 0.9;
+      scale = Math.max(0.2, Math.min(4, scale * k));
+      applyView();
+    }, {passive:false});
+
+
+    svg.addEventListener('mousedown', (e) => {
+        if (e.target === svg) {
+                dragging = true;
+                didPan = false;
+                lx = e.clientX;
+                ly = e.clientY;
+                e.preventDefault(); // prevent text selection start
+            }
+        });
+
+        svg.addEventListener('mousemove', (e) => {
+        if (dragging) {
+            const dx = e.clientX - lx;
+            const dy = e.clientY - ly;
+
+            // small threshold to distinguish click vs pan
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                didPan = true;
+            }
+
+            tx += dx;
+            ty += dy;
+            lx = e.clientX;
+            ly = e.clientY;
+            applyView();
+            e.preventDefault();
+        }
+    });
+
+    svg.addEventListener('mouseup', () => {
+    dragging = false;
+    });
+
+
+    document.getElementById('btn-zoom-in').onclick  = () => { scale=Math.min(4,scale*1.2); applyView(); };
+    document.getElementById('btn-zoom-out').onclick = () => { scale=Math.max(0.2,scale/1.2); applyView(); };
+
+    document.getElementById('btn-export').onclick = () => {
+      const blob = new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n` + new XMLSerializer().serializeToString(svg)], {type:'image/svg+xml'});
+      const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:'layout.svg'});
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    };
+
+    const LEFT_PAD = Math.max(80, OUTER_LANE_PAD + 60);
+    svg.setAttribute('viewBox', `${-LEFT_PAD} 0 ${viewWidth + LEFT_PAD} ${viewHeight}`);
+
+    function initScene(){
+      while(svg.firstChild) svg.removeChild(svg.firstChild);
+      svg.appendChild(defs);
+
+      root = document.createElementNS(NS,'g'); svg.appendChild(root);
+      groupsLayer = document.createElementNS(NS,'g'); groupsLayer.setAttribute('id','groups'); root.appendChild(groupsLayer);
+      edgesLayer  = document.createElementNS(NS,'g'); edgesLayer.setAttribute('id','edges');  root.appendChild(edgesLayer);
+      nodesLayer  = document.createElementNS(NS,'g'); nodesLayer.setAttribute('id','nodes');  root.appendChild(nodesLayer);
+
+      applyView();
+    }
+
+    function midpointOnPath(pathEl) {
+      try {
+        const len = pathEl.getTotalLength();
+        const pt = pathEl.getPointAtLength(len * 0.5);
+        return { x: pt.x, y: pt.y };
+      } catch { return null; }
+    }
+
+    function drawEdgePath(d, src, tgt, titleText) {
+      const p = document.createElementNS(NS,'path');
+      p.setAttribute('class','edge');
+      p.setAttribute('d', d);
+      p.dataset.src = src;
+      p.dataset.tgt = tgt;
+
+      // tooltip via title (keep as-is for now)
+      const title = document.createElementNS(NS,'title');
+      title.textContent = titleText || `${src} → ${tgt}`;
+      p.appendChild(title);
+
+      edgesLayer.appendChild(p);
+
+      if (SHOW_EDGE_LABELS) {
+        const mid = midpointOnPath(p);
+        if (mid) {
+          const tEl = document.createElementNS(NS,'text');
+          tEl.setAttribute('class','edge-label');
+          tEl.dataset.src = src;
+          tEl.dataset.tgt = tgt;
+          tEl.setAttribute('fill', '#64748b');
+          tEl.setAttribute('font-size', '10');
+          tEl.setAttribute('pointer-events','none');
+          tEl.setAttribute('x', mid.x + 4);
+          tEl.setAttribute('y', mid.y - 4);
+          tEl.textContent = `${src}→${tgt}`;
+          edgesLayer.appendChild(tEl);
+        }
+      }
+    }
+
+    function fanDx(nodeWidth, idx, total) {
+      const spacing = 14;
+      const margin  = 10;
+      if (total <= 1 || idx < 0) return 0;
+      const raw  = (idx - (total - 1) / 2) * spacing;
+      const half = nodeWidth / 2 - margin;
+      return Math.max(-half, Math.min(half, raw));
+    }
+
+    const btnClear = document.getElementById('btn-clear');
+    const statePill = document.getElementById('state-pill');
+
+    const detailsTitle = document.getElementById('detailsTitle');
+    const detailsMeta  = document.getElementById('detailsMeta');
+    const detailsBody  = document.getElementById('detailsBody');
+    const detailsSub   = document.getElementById('detailsSub');
+
+    
+    // Derived selection cache (recomputed on applyState)
+    let derived = {
+        unionNodes: new Set(),
+        unionEdges: new Set()
+    };
+
+    // Guard against stale derived sets
+    let selectionEpoch = 0; // increments whenever selection/detailFocus changes
+    let derivedEpoch = -1;  // epoch value when derived was last computed
+
+    function computeUnionSubgraph() {
+        const unionNodes = new Set();
+        const unionEdges = new Set();
+
+        for (const rootId of selectionSet) {
+            const sg = computeSubgraph(rootId);
+            sg.nodes.forEach(n => unionNodes.add(n));
+            sg.edges.forEach(e => unionEdges.add(e));
+        }
+
+        return { unionNodes, unionEdges };
+    }
+
+    function markSelectionDirty() {
+        selectionEpoch++;
+    }
+
+    function ensureDerivedFresh() {
+        if (derivedEpoch === selectionEpoch) return; // already fresh
+
+        if (selectionSet.size > 0) {
+            derived = computeUnionSubgraph();
+        } else {
+            derived = { unionNodes: new Set(), unionEdges: new Set() };
+        }
+
+        derivedEpoch = selectionEpoch; // now aligned
+    }
+
+    function assertDerivedFresh() {
+        if (derivedEpoch !== selectionEpoch) {
+            console.warn("Derived sets were stale; auto-refreshing.");
+        }
+        ensureDerivedFresh();
+    }
+
+    function computeTotals() {
+        assertDerivedFresh();
+
+        let totalAchieve = 0;
+        let totalSavings = 0;
+
+        const nodesToSum = derived.unionNodes; // cached union of subgraph nodes
+
+        for (const id of nodesToSum) {
+            const n = nodeMetaById.get(id) || {};
+            totalAchieve += toNumber(n.costToAchieve);
+            totalSavings += toNumber(n.costSavings);
+        }
+
+        return { totalAchieve, totalSavings, nodeCount: nodesToSum.size };
+    }
+
+    function setStateUI() {
+        const selCount = selectionSet.size;
+        btnClear.disabled = (selCount === 0);
+
+        if (selCount === 0) {
+            statePill.style.display = 'none';
+            statePill.textContent = '';
+            return;
+        }
+
+        statePill.style.display = 'inline-block';
+
+        if (selCount === 1) {
+            const only = Array.from(selectionSet)[0];
+            const n = nodeMetaById.get(only) || {};
+            const label = singleLineLabel(n.label || only);
+            statePill.textContent = `${label} (${only})`;
+        } else {
+            const { totalAchieve, totalSavings, nodeCount } = computeTotals();
+            statePill.textContent =
+                `Selected roots: ${selCount} • Subgraph nodes: ${nodeCount} • ` +
+                `Total Cost to Achieve: ${formatMoney(totalAchieve)} • ` +
+                `Total Annual Cost Savings: ${formatMoney(totalSavings)}`;
+        }
+    }
+
+    function showNoSelection() {
+      detailsTitle.textContent = "No selection";
+      detailsMeta.textContent = "";
+      detailsSub.textContent = "Tip: Select one node to see Details. For multi-select totals, Ctrl/Cmd+Click multiple nodes.";
+      detailsBody.innerHTML = "<span id='detailsEmpty' style='color:var(--muted)'>Select a node to see its Details field here.</span>";
+    }
+
+    function showNodeDetails(nodeId) {
+      const n = nodeMetaById.get(nodeId);
+      if (!n) { showNoSelection(); return; }
+
+      const label = singleLineLabel(n.label || nodeId);
+      const details = decodeHtmlEntities(n.details || "");
+      const achieve = toNumber(n.costToAchieve);
+      const savings = toNumber(n.costSavings);
+
+      detailsTitle.textContent = `${label} (${nodeId})`;
+
+      detailsMeta.innerHTML = "";
+      const k1 = document.createElement('span'); k1.className = "kpi"; k1.textContent = `Cost to Achieve: ${formatMoney(achieve)}`;
+      const k2 = document.createElement('span'); k2.className = "kpi"; k2.textContent = `Annual Cost Savings: ${formatMoney(savings)}`;
+      detailsMeta.appendChild(k1);
+      detailsMeta.appendChild(k2);
+
+      detailsSub.textContent = "Details:";
+
+      detailsBody.textContent = details || "(No Details provided)";
+    }
+
+    function showMultiTotals() {
+        const selCount = selectionSet.size;
+        const { totalAchieve, totalSavings, nodeCount } = computeTotals();
+
+        detailsTitle.textContent = `Multiple selected (${selCount} roots)`;
+        detailsMeta.innerHTML = "";
+
+        const k0 = document.createElement('span');
+        k0.className = "kpi";
+        k0.textContent = `Subgraph nodes: ${nodeCount}`;
+
+        const k1 = document.createElement('span');
+        k1.className = "kpi";
+        k1.textContent = `Total Cost to Achieve: ${formatMoney(totalAchieve)}`;
+
+        const k2 = document.createElement('span');
+        k2.className = "kpi";
+        k2.textContent = `Total Annual Cost Savings: ${formatMoney(totalSavings)}`;
+
+        detailsMeta.appendChild(k0);
+        detailsMeta.appendChild(k1);
+        detailsMeta.appendChild(k2);
+
+        //detailsSub.textContent = "Shift+Click a node to view its Details without changing the selection.";
+        detailsBody.textContent =
+            "Totals shown for the union of all nodes in the selected subgraph(s).";
+    }
+
+    // ---------- Render ----------
+    function render() {
+      initScene();
+
+      // Draw groups
+      groupsOrdered.forEach(gid => {
+        const g = groupAbs.get(gid);
+        if (!g) return;
+
+        const G = document.createElementNS(NS,'g');
+        G.setAttribute('class','group');
+        G.dataset.gid = gid;
+        groupsLayer.appendChild(G);
+
+        const rect = document.createElementNS(NS,'rect');
+        rect.setAttribute('class','group-box');
+        rect.setAttribute('x', g.x);
+        rect.setAttribute('y', g.y);
+        rect.setAttribute('width', maxGroupWidth);
+        rect.setAttribute('height', g.h);
+        G.appendChild(rect);
+
+        const label = document.createElementNS(NS,'text');
+        label.setAttribute('class','group-text');
+        label.setAttribute('x', g.x + 10);
+        label.setAttribute('y', g.y + 18);
+        label.textContent = groupMetaById.get(gid)?.label || gid;
+        G.appendChild(label);
+      });
+
+      // Draw nodes
+      nodeAbs.forEach((r, nid) => {
+        const ng = document.createElementNS(NS,'g');
+        ng.setAttribute('class','node');
+        ng.setAttribute('data-id', nid);
+
+        const box = document.createElementNS(NS,'rect');
+        box.setAttribute('class','node-box');
+        box.setAttribute('x', r.x);
+        box.setAttribute('y', r.y);
+        box.setAttribute('width', r.w);
+        box.setAttribute('height', r.h);
+
+        const text = document.createElementNS(NS,'text');
+        text.setAttribute('class','node-text');
+        text.setAttribute('x', r.x + 8);
+        text.setAttribute('y', r.y + 20);
+        const labelLineCount = setMultilineSvgText(text, nodeMetaById.get(nid)?.label || nid, r.x + 8, r.y + 18);
+
+        ng.appendChild(box);
+        ng.appendChild(text);
+
+        const showIds = (localStorage.getItem('showIds') === '1');
+        if (showIds) {
+          const idText = document.createElementNS(NS,'text');
+          idText.setAttribute('class','node-text');
+          idText.setAttribute('x', r.x + 8);
+          idText.setAttribute('y', r.y + 18 + (labelLineCount * 14));
+          idText.setAttribute('fill', '#64748b');
+          idText.textContent = nid;
+          ng.appendChild(idText);
+        }
+
+        nodesLayer.appendChild(ng);
+      });
+
+      // Draw edges
+      (data.edges || []).forEach(e => {
+        const srcId = String(e.source), tgtId = String(e.target);
+        const s = nodeAbs.get(srcId), t = nodeAbs.get(tgtId);
+        if (!s || !t) return;
+
+        const sG = groupAbs.get(s.group), tG = groupAbs.get(t.group);
+        if (!sG || !tG) return;
+
+        const outList = outEdgesBySrc.get(srcId) || [];
+        const inList  = inEdgesByTgt.get(tgtId) || [];
+
+        const outIdx = outList.findIndex(x => x.t === tgtId);
+        const inIdx  = inList.findIndex(x => x.s === srcId);
+
+        const sx = s.x + s.w/2 + fanDx(s.w, outIdx, outList.length);
+        const sy = s.y + s.h;
+
+        const tx2 = t.x + t.w/2 + fanDx(t.w, inIdx, inList.length);
+        const ty2 = t.y;
+
+        const sOrder = groupOrderById.get(s.group) ?? 0;
+        const tOrder = groupOrderById.get(t.group) ?? 0;
+        const adjacent = (Math.abs(tOrder - sOrder) === 1);
+
+        if (adjacent) {
+          const upper = (sG.y < tG.y) ? sG : tG;
+          const corridorY = upper.y + upper.h + (GROUP_GAP / 2);
+
+          const y1 = sy + EDGE_GAP;
+          const y2 = ty2 - EDGE_GAP;
+
+          const d = [
+            `M ${sx} ${sy}`,
+            `L ${sx} ${y1}`,
+            `L ${sx} ${corridorY}`,
+            `L ${tx2} ${corridorY}`,
+            `L ${tx2} ${y2}`,
+            `L ${tx2} ${ty2}`
+          ].join(' ');
+
+          drawEdgePath(d, srcId, tgtId, `${srcId} → ${tgtId}`);
+        } else {
+          const laneX = -OUTER_LANE_PAD;
+
+          const y1 = sy + EDGE_GAP;
+          const y2 = ty2 - EDGE_GAP;
+
+          const d = [
+            `M ${sx} ${sy}`,
+            `L ${sx} ${y1}`,
+            `L ${laneX} ${y1}`,
+            `L ${laneX} ${y2}`,
+            `L ${tx2} ${y2}`,
+            `L ${tx2} ${ty2}`
+          ].join(' ');
+
+          drawEdgePath(d, srcId, tgtId, `${srcId} → ${tgtId} (skip)`);
+        }
+      });
+
+      // ---------- Apply selection visuals ----------
+      function clearVisuals() {
+        root.querySelectorAll('.hidden').forEach(el => el.classList.remove('hidden'));
+        nodesLayer.querySelectorAll('.node').forEach(el => el.classList.remove('node-subgraph','node-dim'));
+        edgesLayer.querySelectorAll('path.edge').forEach(p => p.classList.remove('edge-hi'));
+        nodesLayer.querySelectorAll('.node-box').forEach(b => b.classList.remove('node-hi'));
+      }
+
+    function applyOverlaySelection() {
+        const { unionNodes, unionEdges } = derived; // <-- use cached derived sets
+
+        // nodes: highlight selected, dim unselected
+        nodesLayer.querySelectorAll('.node').forEach(el => {
+            const id = el.getAttribute('data-id');
+            const selected = unionNodes.has(id);
+            el.classList.toggle('node-subgraph', selected);
+            el.classList.toggle('node-dim', !selected);
+        });
+
+        // edges: hide unselected, highlight selected
+        edgesLayer.querySelectorAll('path.edge').forEach(p => {
+            const k = `${p.dataset.src}→${p.dataset.tgt}`;
+            const selected = unionEdges.has(k);
+            p.classList.toggle('hidden', !selected);
+            p.classList.toggle('edge-hi', selected);
+        });
+
+        // edge labels: hide if edge hidden
+        edgesLayer.querySelectorAll('text.edge-label').forEach(t => {
+            const k = `${t.dataset.src}→${t.dataset.tgt}`;
+            t.classList.toggle('hidden', !unionEdges.has(k));
+        });
+
+        // emphasize roots
+        for (const id of selectionSet) {
+            const n = nodesLayer.querySelector(`.node[data-id="${cssEsc(id)}"]`);
+            n?.querySelector('.node-box')?.classList.add('node-hi');
+        }
+    }
+
+    function applyState() {
+        clearVisuals();
+      
+        assertDerivedFresh();
+
+        if (selectionSet.size > 0) {
+            applyOverlaySelection();
+        }
+
+        // Update top + bottom
+        setStateUI();
+
+        if (selectionSet.size === 0) {
+            detailFocus = null;
+            showNoSelection();
+        } else if (selectionSet.size === 1) {
+            const only = Array.from(selectionSet)[0];
+
+            const df = (detailFocus != null) ? String(detailFocus) : null;
+            const focusId = (df && nodeMetaById.has(df)) ? df : only;
+
+            detailFocus = focusId;
+            showNodeDetails(focusId);
+
+            // ---- ADD: subgraph totals for single select ----
+            const { totalAchieve, totalSavings, nodeCount } = computeTotals();
+
+            const k0 = document.createElement('span');
+            k0.className = "kpi";
+            k0.textContent = `Subgraph nodes: ${nodeCount}`;
+
+            const k3 = document.createElement('span');
+            k3.className = "kpi";
+            k3.textContent = `Subgraph Total Cost to Achieve: ${formatMoney(totalAchieve)}`;
+
+            const k4 = document.createElement('span');
+            k4.className = "kpi";
+            k4.textContent = `Subgraph Total Annual Savings: ${formatMoney(totalSavings)}`;
+
+            detailsMeta.appendChild(k0);
+            detailsMeta.appendChild(k3);
+            detailsMeta.appendChild(k4);
+
+            detailsSub.textContent =
+            "Node details shown above. Totals reflect the entire upstream + downstream subgraph.";
+        } else {
+            // multi-select: always show focused details if set; otherwise totals
+            if (detailFocus != null && nodeMetaById.has(String(detailFocus))) {
+                showNodeDetails(String(detailFocus));
+            } else {
+                showMultiTotals();
+            }
+        }
+    }
+
+    function clearAll() {
+        didPan = false;
+        selectionSet.clear();
+        detailFocus = null;
+        markSelectionDirty();
+        applyState();
+    }
+
+    function onStageClick(e) {
+        const wasPan = didPan;
+        didPan = false; // reset FIRST
+
+        if (e.target === svg && !wasPan) {
+            clearAll();
+        }
+    }
+
+
+    function onKeyDown(e) {
+        if (e.key === 'Escape') {
+            clearAll();
+        }
+    }
+
+    svg.addEventListener('click', onStageClick);
+    window.addEventListener('keydown', onKeyDown);
+
+    // function computeUnionNodes() {
+    //     const unionNodes = new Set();
+    //     for (const rootId of selectionSet) {
+    //         const sg = computeSubgraph(rootId);
+    //         sg.nodes.forEach(n => unionNodes.add(n));
+    //     }
+    //     return unionNodes;
+    // }
+
+
+    window.__applyState = applyState;
+
+    // ---------- Click handling ----------
+    nodesLayer.onclick = (e) => {
+        const g = e.target.closest('.node');
+        if (!g) return;
+
+        e.stopPropagation();
+        e.preventDefault?.();
+
+        const id = g.getAttribute('data-id');
+        if (!id) return;
+
+        const isCtrl = !!(e.ctrlKey || e.metaKey);
+
+        // 1) Ctrl/Cmd+Click: toggle root selection
+        if (isCtrl) {
+            if (selectionSet.has(id)) selectionSet.delete(id);
+            else selectionSet.add(id);
+
+            if (selectionSet.size === 1) {
+                detailFocus = Array.from(selectionSet)[0];
+            } else {
+                detailFocus = null;
+            }
+
+            markSelectionDirty();
+            applyState();
+            return;
+        }
+        
+        // ensure derived matches current selection before using it
+        assertDerivedFresh();
+
+        // 2) Plain click INSIDE current union: toggle inspect
+        if (selectionSet.size > 0 && derived.unionNodes.has(id)) {
+            detailFocus = (detailFocus === id) ? null : id;
+            applyState();
+            return;
+        }
+
+        // 3) Plain click outside union: new single-root selection
+        selectionSet.clear();
+        selectionSet.add(id);
+        detailFocus = id;
+        markSelectionDirty();
+        applyState();
+    };
+
+
+      // Hover over node: no-op (intentionally none)
+
+      // ---------- Clear / Reset / Background / Esc ----------
+      const btnClear = document.getElementById('btn-clear');
+
+      btnClear.onclick = clearAll;
+
+      document.getElementById('btn-reset').onclick = () => {
+        scale=1; tx=SIDE_MARGIN; ty=TOP_MARGIN; applyView();
+        clearAll();
+      };
+
+      // initial state
+      applyState();
+    }
+
+    render();
+
+    // toolbar toggles
+    document.getElementById('btn-toggle-debug').onclick = () => {
+      const d = document.getElementById('debug');
+      d.style.display = (d.style.display === 'none' || !d.style.display) ? 'block' : 'none';
+    };
+
+    document.getElementById('btn-toggle-ids').onclick = () => {
+      const cur = (localStorage.getItem('showIds') === '1');
+      localStorage.setItem('showIds', cur ? '0' : '1');
+      render();
+    };
+
+    document.getElementById('btn-toggle-edge-labels').onclick = () => {
+      SHOW_EDGE_LABELS = !SHOW_EDGE_LABELS;
+      localStorage.setItem('showEdgeLabels', SHOW_EDGE_LABELS ? '1' : '0');
+      render();
+    };
+
+  })();
+  </script>
+</body>
+</html>

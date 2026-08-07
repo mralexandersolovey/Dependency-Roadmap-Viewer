@@ -178,4 +178,4 @@ This project bundles `elk.bundled.js` from ELK.js / Eclipse Layout Kernel. See t
 - Dependency values must match existing `Dep ID` values.
 - Missing dependency IDs are added as external placeholder nodes.
 - Cycles are detected and placed into a final group.
-- `data.json` is generated output, but it can be committed if you want GitHub users to open the included sample immediately.
+- `data.json` is generated output.
